@@ -1,0 +1,81 @@
+version: '3.5'
+
+services:
+
+  server-one:
+    container_name: server-one
+    image: lombocska/server-one
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_TWO_RESOURCE_URL: server-two:8081
+    networks:
+      - sleuth-example
+    labels:
+      collect_logs_with_filebeat: "true"
+      decode_log_event_to_json_object: "true"
+
+  server-two:
+    container_name: server-two
+    image: lombocska/server-two
+    networks:
+      - sleuth-example
+    labels:
+      collect_logs_with_filebeat: "true"
+      decode_log_event_to_json_object: "true"
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0
+    ports:
+      - "9200:9200"
+    environment:
+      - "discovery.type=single-node"
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data:rw
+    networks:
+      - sleuth-example
+
+  logstash:
+    container_name: logstash
+    image: docker.elastic.co/logstash/logstash:7.2.0
+    ports:
+      - "25826:25826"
+      - "5044:5044"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    restart: on-failure
+    depends_on:
+      - elasticsearch
+    networks:
+      - sleuth-example
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.2.0
+    ports:
+      - "5601:5601"
+    restart: on-failure
+    depends_on:
+      - elasticsearch
+    networks:
+      - sleuth-example
+
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:7.2.0
+    volumes:
+      - ./filebeat/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro # Configuration file
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro           # Docker logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro                       # Additional information about containers
+      - ./filebeat/data:/usr/share/filebeat/data:rw                        # Persistence data
+    user: root                                                             # Allow access to log files and docker.sock
+    restart: on-failure
+    depends_on:
+      - logstash
+    networks:
+      - sleuth-example
+
+networks:
+  sleuth-example:
+    driver: bridge

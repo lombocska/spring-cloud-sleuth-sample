@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: '@name@'
+
+server-one:
+  resource-url:
+    server-two: ${SERVER_TWO_RESOURCE_URL:localhost:8081}
