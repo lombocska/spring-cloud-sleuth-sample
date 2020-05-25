@@ -64,6 +64,7 @@ services:
     container_name: kafka
     ports:
       - "9092:9092"
+      - "8778:8778"
     environment:
       KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka:19092,LISTENER_DOCKER_EXTERNAL://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
@@ -89,9 +90,20 @@ services:
       STORAGE_TYPE: elasticsearch
       ES_HOSTS: elasticsearch:9200
       ES_HTTP_LOGGING: BODY
+      ZIPKIN_LOG_LEVEL: INFO
     ports:
       # Port used for the Zipkin UI and HTTP Api
       - "9411:9411"
+    networks:
+      - sleuth-example
+
+  zipkin-dependencies:
+    image: openzipkin/zipkin-dependencies
+    container_name: zipkin-dependencies
+    environment:
+      STORAGE_TYPE: elasticsearch
+      ES_HOSTS: elasticsearch:9200
+      ZIPKIN_LOG_LEVEL: INFO
     networks:
       - sleuth-example
 
@@ -146,6 +158,29 @@ services:
       - logstash
     networks:
       - sleuth-example
+
+#  metricbeat:
+#    container_name: metricbeat
+#    image: docker.elastic.co/beats/metricbeat:7.2.0
+#    restart: on-failure
+#    user: root
+#    environment:
+#      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-elasticsearch}
+#      KIBANA_HOST: ${KIBANA_HOST:-kibana}
+#      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+##      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-changeme}
+#    volumes:
+#      - ./metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+#      - /proc:/hostfs/proc:ro
+#      - /:/hostfs:ro
+#    depends_on:
+#      - kibana
+#    # disable strict permission checks
+#    command: ["--strict.perms=false", "-system.hostfs=/hostfs"]
+#    networks:
+#      - sleuth-example
 
 networks:
   sleuth-example:

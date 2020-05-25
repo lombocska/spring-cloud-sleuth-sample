@@ -1,0 +1,119 @@
+# https://github.com/elastic/beats/blob/master/metricbeat/metricbeat.reference.yml
+
+#-------------------------------- Autodiscovery -------------------------------
+# Autodiscover allows you to detect changes in the system and spawn new modules as they happen.
+metricbeat.autodiscover:
+  providers:
+    - type: docker
+      # https://www.elastic.co/guide/en/beats/metricbeat/current/configuration-autodiscover-hints.html
+      hints.enabled: true
+
+metricbeat.modules:
+  #------------------------------- System Module -------------------------------
+  - module: system
+    metricsets: ["cpu", "load", "memory", "network", "process", "process_summary", "core", "diskio", "socket"]
+    processes: ['.*']
+    process.include_top_n:
+      by_cpu: 5
+      by_memory: 5
+    period: 10s
+    cpu.metrics:  ["percentages"]
+    core.metrics: ["percentages"]
+
+  - module: system
+    period: 1m
+    metricsets:
+      - filesystem
+      - fsstat
+    processors:
+      - drop_event.when.regexp:
+          system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
+
+  - module: system
+    period: 15m
+    metricsets:
+      - uptime
+
+  #------------------------------- Docker Module -------------------------------
+  - module: docker
+    metricsets: ["container", "cpu", "diskio", "healthcheck", "info", "memory", "network"]
+    hosts: ["unix:///var/run/docker.sock"]
+    period: 10s
+
+  - module: kafka
+    #metricsets:
+    #  - partition
+    #  - consumergroup
+    period: 10s
+    hosts: ["kafka:9092"]
+
+    client_id: metricbeat
+    #retries: 3
+    #backoff: 250ms
+
+    # List of Topics to query metadata for. If empty, all topics will be queried.
+    #topics: []
+
+    # Optional SSL. By default is off.
+    # List of root certificates for HTTPS server verifications
+    #ssl.certificate_authorities: ["/etc/pki/root/ca.pem"]
+
+    # Certificate for SSL client authentication
+    #ssl.certificate: "/etc/pki/client/cert.pem"
+
+    # Client Certificate Key
+    #ssl.key: "/etc/pki/client/cert.key"
+
+    # SASL authentication
+    #username: ""
+    #password: ""
+
+# Metrics collected from a Kafka broker using Jolokia
+#- module: kafka
+#  metricsets:
+#    - broker
+#  period: 10s
+#  hosts: ["localhost:8779"]
+
+# Metrics collected from a Java Kafka consumer using Jolokia
+#- module: kafka
+#  metricsets:
+#    - consumer
+#  period: 10s
+#  hosts: ["localhost:8774"]
+
+# Metrics collected from a Java Kafka producer using Jolokia
+#- module: kafka
+#  metricsets:
+#    - producer
+#  period: 10s
+#  hosts: ["localhost:8775"]
+#================================ Processors ===================================
+processors:
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_locale:
+      format: offset
+  - add_host_metadata:
+      netinfo.enabled: true
+
+#========================== Elasticsearch output ===============================
+output.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOST}:9200"]
+  username: ${ELASTICSEARCH_USERNAME}
+#  password: ${ELASTICSEARCH_PASSWORD}
+
+#============================== Dashboards =====================================
+setup.dashboards:
+  enabled: true
+
+#============================== Kibana =========================================
+setup.kibana:
+  host: "${KIBANA_HOST}:5601"
+  username: ${ELASTICSEARCH_USERNAME}
+#  password: ${ELASTICSEARCH_PASSWORD}
+
+#============================== Xpack Monitoring ===============================
+xpack.monitoring:
+  enabled: true
+  elasticsearch:

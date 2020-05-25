@@ -50,6 +50,11 @@ ZIPKIN Latency analysis
 ![zipkin](latency-analysis.png)
 
 
+ZIPKIN Dependencies analysis/visualisation graph
+
+![graph](zipkin-dependencies-visualisation-graph.png)
+
+
 ELK indices and tracing
 
 ![kibana-logs](kibana-logs-filtered-by-custom-trace-id.png)
@@ -102,42 +107,46 @@ Filebeat & Logstash manage to deal with the logs coming form docker containers.
 
 build docker latest images and jar
 
-1. `cd sample/edge-service`
-2. `./mvnw clean install`
-3. `cd ../platform-service-producer`
-4. `./mvnw clean install`
-5. `cd ../platform-service-consumer`
-6. `./mvnw clean install`
+-  `cd docker/`
+- `./build.sh` build docker images
+-  `./start.sh` run docker containers
 
-
-run docker containers
-
-7. `cd ../docker`
-8. `docker-compose up --build`
+```
+Note: zipkin-dependencies is an apache scheduled job, after finishing it will exit.
+```
 
 
 do the trigger action
 
-9. request `localhost:8080` with header request param `lombocska-request-id` with a value from i.e.: Postman
+- request `localhost:8080` with header request param `lombocska-request-id` with a value from i.e.: Postman
 
 
 see the result in Kibana
 
-10. open `localhost:5601` in your browser
-11. Go to discover, create an index with pattern `logstash-*` then choose `@timestamp`
-12. in Kibana, Discover window you should be able to filter based on your custom trace id as well that you fill in as a value in `lombocska-request-id` header param
+- open `localhost:5601` in your browser
+- Go to discover, create an index with pattern `logstash-*` then choose `@timestamp`
+- in Kibana, Discover window you should be able to filter based on your custom trace id as well that you fill in as a value in `lombocska-request-id` header param
 
 
 see the result in Zipkin
 
-13. open `http://localhost:9411/zipkin` Discover Page
-14. click search button
-15. you should see the different requests and messaging polls within a hierarchy structure
+- open `http://localhost:9411/zipkin` Discover Page
+- click search button
+- you should see the different requests and messaging polls within a hierarchy structure
+- visit `http://localhost:9411/zipkin/dependency` and see how the service graph looks like
+
+At the end of the whole process call `./stop.sh` in docker folder.
 
 ## TO-DO
 - [ ] in zipkin, custom trace id is not searchable as a tag (fix)
 - [ ] lack of other services in any programming language (i.e.: python)
+- [ ] hinder unnecessary trace data flooding with instrumentation and sampling policy
+- [ ] webflux showcase
+- [ ] sampler percentage to spring.sleuth.sampler.percentage: 1.0
+- [ ] prometheus
 
 ## INSPIRATIONS
 
 Spring.io Bridge virtual Conference second quiz
+[2017 SpringOne Conference Pivotal San Fransisco](https://tanzu.vmware.com/content/springone-platform-2017/distributed-tracing-latency-analysis-for-your-microservices-grzejszczak-krishna)
+//@MGrzejszczak and Reshmi Krishna//
