@@ -2,27 +2,98 @@ version: '3.5'
 
 services:
 
-  server-one:
-    container_name: server-one
-    image: lombocska/server-one
+  edge-service:
+    container_name: edge-service
+    image: lombocska/edge-service
     ports:
       - "8080:8080"
     environment:
-      SERVER_TWO_RESOURCE_URL: server-two:8081
+      PLATFORM_SERVICE_PRODUCER_RESOURCE_URL: platform-service-producer:8081
+      ZIPKIN_BASE_URL: http://zipkin:9411
     networks:
       - sleuth-example
     labels:
       collect_logs_with_filebeat: "true"
       decode_log_event_to_json_object: "true"
 
-  server-two:
-    container_name: server-two
-    image: lombocska/server-two
+  platform-service-producer:
+    container_name: platform-service-producer
+    image: lombocska/platform-service-producer
+    environment:
+      ZIPKIN_BASE_URL: http://zipkin:9411
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     networks:
       - sleuth-example
     labels:
       collect_logs_with_filebeat: "true"
       decode_log_event_to_json_object: "true"
+    ports:
+    - "8081:8081"
+
+  platform-service-consumer:
+    container_name: platform-service-consumer
+    image: lombocska/platform-service-consumer
+    environment:
+      ZIPKIN_BASE_URL: http://zipkin:9411
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - sleuth-example
+    labels:
+      collect_logs_with_filebeat: "true"
+      decode_log_event_to_json_object: "true"
+
+  zoo:
+    image: zookeeper:3.4.9
+    hostname: zoo
+    container_name: zoo
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_PORT: 2181
+      ZOO_SERVERS: server.1=zoo:2888:3888
+    volumes:
+      - ./zk-single-kafka-single/zoo/data:/data
+      - ./zk-single-kafka-single/zoo/datalog:/datalog
+    networks:
+      - sleuth-example
+
+  kafka:
+    image: confluentinc/cp-kafka:5.5.0
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka:19092,LISTENER_DOCKER_EXTERNAL://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zoo:2181"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - ./zk-single-kafka-single/kafka1/data:/var/lib/kafka/data
+    depends_on:
+      - zoo
+    networks:
+      - sleuth-example
+    labels:
+      collect_logs_with_filebeat: "true"
+      decode_log_event_to_json_object: "true"
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    environment:
+      STORAGE_TYPE: elasticsearch
+      ES_HOSTS: elasticsearch:9200
+      ES_HTTP_LOGGING: BODY
+    ports:
+      # Port used for the Zipkin UI and HTTP Api
+      - "9411:9411"
+    networks:
+      - sleuth-example
 
   elasticsearch:
     container_name: elasticsearch

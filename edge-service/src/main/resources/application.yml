@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: '@name@'
+  sleuth:
+    propagation-keys:
+      - "lombocska-request-id"  #baggage field that gets propagated with traceId from HTTP Request Header
+    log.slf4j.whitelisted-mdc-keys:
+      - "lombocska-request-id" #makes possible to use this custom propagation keys in logs
+    baggage:
+      tagFields:
+        - "lombocska-request-id" #turn propagated field into tags for zipkin because Zipkin has no knowledge of baggage and does not receive that information without this config
+  zipkin:
+    base-url: ${ZIPKIN_BASE_URL:http://localhost:9411/}
+
+edge-service:
+  resource-url:
+    platform-service-producer: ${PLATFORM_SERVICE_PRODUCER_RESOURCE_URL:localhost:8081}
+

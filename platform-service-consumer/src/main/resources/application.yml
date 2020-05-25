@@ -1,0 +1,23 @@
+server:
+  port: 802
+
+spring:
+  application:
+    name: '@name@'
+  sleuth:
+    propagation-keys:
+      - "lombocska-request-id"
+    log.slf4j.whitelisted-mdc-keys:
+      - "lombocska-request-id"
+  zipkin:
+    base-url: ${ZIPKIN_BASE_URL:http://localhost:9411/}
+  kafka:
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      client-id: ${spring.application.name}-${random.int}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+lombocska:
+  kafka:
+    topic: ${KAFKA_TOPIC:zipkin-sleuth-example-topic}
